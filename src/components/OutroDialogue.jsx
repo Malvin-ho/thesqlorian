@@ -10,7 +10,7 @@ const OutroDialogue = ({ onClose }) => {
         <div className="flex items-center justify-center gap-4">
           <img src={yoda} alt="yoda" className="w-20" />
           <p className="text-lg font-light text-amber-100 italic">
-            "Well done, young padawan. You managed to escape."
+            "Well done, young padawan. Your training is complete."
           </p>
         </div>
         <button
