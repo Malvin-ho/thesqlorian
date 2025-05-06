@@ -8,13 +8,23 @@ import IntroDialogue from "./IntroDialogue";
 import RightAside from "./RightAside";
 import LeftAside from "./LeftAside";
 import QuestsDialogues from "./QuestsDialogues";
+import OutroDialogue from "./OutroDialogue";
+
+import Credits from "./Credits";
 
 const StoryIntro = () => {
-  const [showStory, setShowStory] = useState(true);
+  const [showStory, setShowStory] = useState(() => {
+    const hasSeenStory = localStorage.getItem('hasSeenStory');
+    return hasSeenStory ? false : true;
+  });
+
+  const [showOutro, setShowOutro] = useState(false);
+
   const [tableIndex, setTableIndex] = useState(0);
   const [showQuestDialogue, setShowQuestDialogue] = useState(true);
   const tasks = data[tableIndex];  
   const [showCredits, setShowCredits] = useState(false);
+  const [gameResetTrigger, setGameResetTrigger] = useState(false);
 
   const [isPlaying, setIsPlaying] = useState(true);
   const audioRef = useRef(null);
@@ -29,18 +39,24 @@ const StoryIntro = () => {
   }
 
   useEffect(() => {
-  if (audioRef.current) {
-    audioRef.current.play()
-      .then(() => {
-        setIsPlaying(true);
-      })
-      .catch(() => {
-        console.log('Audio does not respond or autoplay was blocked.');
-        setIsPlaying(false);
+    if (audioRef.current) {
+        audioRef.current.play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+          .catch(() => {
+            console.log('Audio does not respond or autoplay was blocked.');
+            setIsPlaying(false);
       });
-  }
-}, []);
+    }
+  }, []);
 
+  useEffect(() => {
+    // Prevent IntroDialogue from showing again on reset
+    if (gameResetTrigger) {
+      setShowStory(false);
+    }
+  }, [gameResetTrigger]);
 
   const toggleAudio = () => {
     if (!audioRef.current) return;
@@ -54,14 +70,14 @@ const StoryIntro = () => {
 
   return (
     <section className="w-full min-h-screen bg-gradient-to-b text-white bg-black/50 backdrop-blur-sm">
-      <div className="fixed top-0 right-0 flex items-center gap-4 z-51">
+      <div className="fixed top-0 right-0 flex items-center z-51">
         <audio ref={audioRef} src="/music.mp3" loop autoPlay/>
         <div>
           <button
             onClick={toggleAudio}
             className="text-black font-bold transition-all w-15 cursor-pointer"
           >
-            {isPlaying ? <img src={pause_icon} alt="Pause Icon" /> : <img src={play_icon} alt="Play Icon"/>}
+            {isPlaying ? <img src={pause_icon} alt="Pause Icon" className="inline"/> : <img src={play_icon} alt="Play Icon" className="inline"/>}
           </button>
         </div>
 
@@ -69,41 +85,23 @@ const StoryIntro = () => {
         <div>
           <button
             onClick={() => setShowCredits(true)}
-            className="text-black font-bold bg-white/70 px-4 py-2 rounded-lg shadow transition hover:bg-white"
+            className="text-black font-bold bg-white/70 px-4 py-2 mr-2 rounded-lg shadow transition hover:bg-white cursor-pointer"
           >
             Credits
           </button>
         </div>
       </div>
 
-      {showCredits && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur flex items-center justify-center z-51">
-          <div className="bg-zinc-800 text-white p-6 rounded-2xl shadow-lg space-y-4 max-w-lg w-full">
-            <h2 className="text-2xl font-bold">Credits</h2>
-            <ul className="list-disc list-inside space-y-1">
-              <li>MAMIDAKIS GEORGE</li>
-              <li>MALVIN HOXHA</li>
-              <li>KIRKALAS PANAGIOTIS</li>
-              <li>PASXALIDIS ANTONIOS</li>
-              <li>PIGGIOS PANAGIOTIS</li>
-              <li>Music by Luis Humanoide from Pixabay</li>
-              <li>Play, Pause, Yoda, Vader icons by Icons8</li>
-            </ul>
-            <button
-              onClick={() => setShowCredits(false)}
-              className="mt-4 bg-white text-black px-4 py-2 rounded-lg shadow hover:bg-zinc-300"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      {showCredits && <Credits onClick={() => setShowCredits(false)}/>}
       
       {showStory && (
-        <IntroDialogue onFinish={() => setShowStory(false)} />
+        <IntroDialogue onFinish={() => {
+          localStorage.setItem('hasSeenStory', 'true');
+          setShowStory(false);
+        }} />
       )}
 
-      {!showStory && (
+      {!showStory && !showOutro && (
         <main className="w-full min-h-screen flex flex-col lg:flex-row gap-4 p-6">
 
           {showQuestDialogue && (
@@ -119,6 +117,11 @@ const StoryIntro = () => {
               tableIndex={tableIndex}
               tasks={tasks}
               ChangePage={ChangePage}
+              onCompleteLastTask={() => {
+                setShowOutro(true);
+                setShowStory(false); // prevent re-showing the intro
+              }}
+              gameResetTrigger={gameResetTrigger}
             />
           </aside>
 
@@ -126,6 +129,16 @@ const StoryIntro = () => {
             <RightAside tableIndex={tableIndex} tasks={tasks} table={table}/>
           </aside>
         </main>
+      )}
+      {showOutro && (
+        <OutroDialogue
+          onClose={() => {
+            setShowOutro(false);
+            setTableIndex(0);
+            setShowQuestDialogue(true);
+            setGameResetTrigger(prev => !prev); // force refresh logic
+          }}
+        />
       )}
     </section>
   );
